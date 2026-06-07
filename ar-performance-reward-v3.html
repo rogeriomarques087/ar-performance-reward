@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A&R Performance Reward — Sistema de Premiação</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --accent: #00e5a0;
+    --accent2: #7c3aed;
+    --gold: #f59e0b;
+    --silver: #94a3b8;
+    --bronze: #cd7c3a;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+
+  .logo-text {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  #connectBtn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  #connectBtn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  #connectBtn.connected {
+    border-color: var(--accent);
+    background: rgba(0,229,160,0.1);
+    color: var(--accent);
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 4rem 2rem 3rem;
+    position: relative;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.3);
+    padding: 0.3rem 0.8rem;
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 .highlight {
+    color: var(--accent);
+    position: relative;
+  }
+
+  .hero p {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 500px;
+    margin: 0 auto 2rem;
+    line-height: 1.6;
+  }
+
+  /* Contract info bar */
+  .contract-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .contract-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .contract-info label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .contract-info span {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.online { background: var(--accent); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--accent); }
+
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+
+  .tab {
+    padding: 0.75rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+    font-family: var(--mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Form */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-grid.single { grid-template-columns: 1fr; }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.7rem 0.9rem;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  input::placeholder { color: var(--muted); }
+
+  /* Buttons */
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .btn-primary:hover {
+    background: #00c988;
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .btn-danger:hover { background: var(--danger); color: white; }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Medal badges */
+  .medal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 100px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .medal-ouro { background: rgba(245,158,11,0.15); color: var(--gold); border: 1px solid rgba(245,158,11,0.3); }
+  .medal-prata { background: rgba(148,163,184,0.15); color: var(--silver); border: 1px solid rgba(148,163,184,0.3); }
+  .medal-bronze { background: rgba(205,124,58,0.15); color: var(--bronze); border: 1px solid rgba(205,124,58,0.3); }
+  .medal-nenhum { background: rgba(100,116,139,0.15); color: var(--muted); border: 1px solid var(--border); }
+
+  /* Technician result card */
+  .tecnico-result {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin-top: 1rem;
+  }
+
+  .tecnico-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .metric-item {
+    text-align: center;
+    padding: 0.6rem;
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .metric-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--accent);
+  }
+
+  .metric-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.2rem;
+  }
+
+  /* Score bar */
+  .score-bar {
+    margin-top: 0.5rem;
+  }
+
+  .score-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .score-bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--bronze), var(--silver), var(--gold));
+    transition: width 0.8s ease;
+  }
+
+  /* Logs / transactions */
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--surface2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-icon { font-size: 1rem; flex-shrink: 0; }
+
+  .log-text { color: var(--text); flex: 1; }
+  .log-time { color: var(--muted); font-size: 0.65rem; white-space: nowrap; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    max-width: 360px;
+    z-index: 1000;
+    transform: translateY(200%);
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  #toast.show { transform: translateY(0); }
+  #toast.success { border-color: var(--accent); color: var(--accent); }
+  #toast.error { border-color: var(--danger); color: var(--danger); }
+  #toast.info { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Loading spinner */
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 1.8rem; }
+  }
+
+  .separator {
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0;
+  }
+
+  .info-box {
+    background: rgba(0,229,160,0.05);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+
+  .info-box strong { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚙️</div>
+    <div class="logo-text">A&R <span>Performance</span> Reward</div>
+  </div>
+  <button id="connectBtn" onclick="connectWallet()">Conectar Carteira</button>
+</header>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="hero-tag">Smart Contract · Sepolia Testnet</div>
+    <h1>Sistema de <span class="highlight">Premiação</span><br>Automática A&R</h1>
+    <p>Recompensas distribuídas automaticamente com base no desempenho real do time de Análise e Reparo.</p>
+  </div>
+
+  <div class="contract-bar">
+    <div class="contract-info">
+      <div class="status-dot" id="statusDot"></div>
+      <div>
+        <label>Contrato</label><br>
+        <span id="contractAddress">0x51D550f4...b2836c</span>
+      </div>
+    </div>
+    <div class="contract-info">
+      <div>
+        <label>Rede</label><br>
+        <span>Sepolia Testnet</span>
+      </div>
+    </div>
+    <div class="contract-info">
+      <div>
+        <label>Saldo do Contrato</label><br>
+        <span id="contractBalance">— ETH</span>
+      </div>
+    </div>
+    <div class="contract-info">
+      <div>
+        <label>Carteira</label><br>
+        <span id="walletAddress">Não conectada</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statTecnicos">—</div>
+      <div class="stat-label">Técnicos Cadastrados</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statSaldo">—</div>
+      <div class="stat-label">Saldo Disponível (ETH)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statTxs">0</div>
+      <div class="stat-label">Transações Nesta Sessão</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('depositar')">💰 Depositar</button>
+    <button class="tab" onclick="switchTab('cadastrar')">👤 Cadastrar</button>
+    <button class="tab" onclick="switchTab('metricas')">📊 Métricas</button>
+    <button class="tab" onclick="switchTab('premiar')">🏆 Premiar</button>
+    <button class="tab" onclick="switchTab('consultar')">🔍 Consultar</button>
+    <button class="tab" onclick="switchTab('logs')">📋 Logs</button>
+  </div>
+
+  <!-- DEPOSITAR -->
+  <div id="tab-depositar" class="tab-content active">
+    <div class="card">
+      <div class="card-title">Depositar Fundos no Contrato</div>
+      <div class="info-box">
+        O gestor deposita ETH que será usado para pagar os prêmios automaticamente.
+        <br><strong>Bronze:</strong> 0.01 ETH · <strong>Prata:</strong> 0.025 ETH · <strong>Ouro:</strong> 0.05 ETH
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Valor em ETH</label>
+          <input type="number" id="depositValue" placeholder="ex: 0.1" step="0.001" min="0.001">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="depositarFundos()">💰 Depositar Fundos</button>
+    </div>
+  </div>
+
+  <!-- CADASTRAR -->
+  <div id="tab-cadastrar" class="tab-content">
+    <div class="card">
+      <div class="card-title">Cadastrar Técnico</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Endereço da Carteira (wallet) do Técnico</label>
+          <input type="text" id="cadEndereco" placeholder="0x...">
+        </div>
+        <div class="form-group full">
+          <label>Nome do Técnico</label>
+          <input type="text" id="cadNome" placeholder="ex: João Silva">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="cadastrarTecnico()">👤 Cadastrar Técnico</button>
+    </div>
+  </div>
+
+  <!-- MÉTRICAS -->
+  <div id="tab-metricas" class="tab-content">
+    <div class="card">
+      <div class="card-title">Registrar Métricas de Desempenho</div>
+      <div class="info-box">
+        As métricas são convertidas automaticamente em pontuação pelo contrato.
+        <br><strong>Fórmula:</strong> (Reparos×40% + Qualidade×40% + Tempo×20%) = Pontuação Final
+      </div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Endereço do Técnico</label>
+          <input type="text" id="metEndereco" placeholder="0x...">
+        </div>
+        <div class="form-group">
+          <label>Reparos Realizados (qtd)</label>
+          <input type="number" id="metReparos" placeholder="ex: 35" min="0">
+        </div>
+        <div class="form-group">
+          <label>Taxa de Qualidade (0-100%)</label>
+          <input type="number" id="metQualidade" placeholder="ex: 87" min="0" max="100">
+        </div>
+        <div class="form-group full">
+          <label>Tempo Médio de Reparo (minutos)</label>
+          <input type="number" id="metTempo" placeholder="ex: 45" min="1">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="registrarMetricas()">📊 Registrar Métricas</button>
+    </div>
+  </div>
+
+  <!-- PREMIAR -->
+  <div id="tab-premiar" class="tab-content">
+    <div class="card">
+      <div class="card-title">Liberar Prêmio Individual</div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Endereço do Técnico</label>
+          <input type="text" id="premEndereco" placeholder="0x...">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="liberarPremio()">🏆 Liberar Prêmio</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Liberar Todos os Prêmios</div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Distribui automaticamente os prêmios para todos os técnicos elegíveis de uma vez.</p>
+      <button class="btn btn-secondary" onclick="liberarTodos()">🚀 Liberar Todos os Prêmios</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Sacar Fundos Restantes</div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Retorna o saldo remanescente do contrato para a carteira do gestor.</p>
+      <button class="btn btn-danger" onclick="sacarFundos()">↩ Sacar Fundos</button>
+    </div>
+  </div>
+
+  <!-- CONSULTAR -->
+  <div id="tab-consultar" class="tab-content">
+    <div class="card">
+      <div class="card-title">Consultar Técnico</div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Endereço do Técnico</label>
+          <input type="text" id="consEndereco" placeholder="0x...">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="consultarTecnico()">🔍 Consultar</button>
+      <div id="consultaResult" style="display:none;" class="tecnico-result">
+        <div class="tecnico-name" id="consNome">—</div>
+        <div id="consMedal"></div>
+        <div class="separator"></div>
+        <div class="metrics-grid">
+          <div class="metric-item">
+            <div class="metric-value" id="consReparos">—</div>
+            <div class="metric-label">Reparos</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value" id="consQualidade">—</div>
+            <div class="metric-label">Qualidade %</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value" id="consTempo">—</div>
+            <div class="metric-label">Tempo (min)</div>
+          </div>
+        </div>
+        <div class="score-bar">
+          <div class="score-bar-label">
+            <span>Pontuação</span>
+            <span id="consPontuacao">—</span>
+          </div>
+          <div class="score-bar-track">
+            <div class="score-bar-fill" id="consBarFill" style="width:0%"></div>
+          </div>
+        </div>
+        <div style="margin-top:0.75rem; font-family:var(--mono); font-size:0.75rem; color:var(--muted);">
+          Status: <span id="consPremiado" style="color:var(--accent)">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div id="tab-logs" class="tab-content">
+    <div class="card">
+      <div class="card-title">Log de Transações</div>
+      <div class="log-list" id="logList">
+        <div class="log-item">
+          <span class="log-icon">ℹ️</span>
+          <span class="log-text">Conecte sua carteira MetaMask para começar.</span>
+          <span class="log-time">agora</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+const CONTRACT_ADDRESS = "0x51D550f4c66098244Bd3B98EF5276095eAb2836c";
+const ABI = [
+  "function depositarFundos() external payable",
+  "function cadastrarTecnico(address _endereco, string calldata _nome) external",
+  "function registrarMetricas(address _tecnico, uint256 _reparos, uint256 _qualidade, uint256 _tempoMedio) external",
+  "function liberarPremio(address _tecnico) external",
+  "function liberarTodosOsPremios() external",
+  "function sacarFundos() external",
+  "function saldoContrato() external view returns (uint256)",
+  "function totalTecnicos() external view returns (uint256)",
+  "function consultarTecnico(address _tecnico) external view returns (string memory nome, uint256 pontuacao, uint8 nivel, bool premiado, uint256 reparos, uint256 qualidade, uint256 tempo)",
+  "event TecnicoCadastrado(address indexed tecnico, string nome)",
+  "event MetricasRegistradas(address indexed tecnico, uint256 pontuacao, uint8 nivel)",
+  "event PremioLibera(address indexed tecnico, uint256 valor, uint8 nivel)",
+];
+
+let provider, signer, contract;
+let txCount = 0;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.innerHTML = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+  t.className = `show ${type}`;
+  setTimeout(() => t.className = '', 4000);
+}
+
+function addLog(icon, text) {
+  const now = new Date().toLocaleTimeString('pt-BR');
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `<span class="log-icon">${icon}</span><span class="log-text">${text}</span><span class="log-time">${now}</span>`;
+  const list = document.getElementById('logList');
+  list.insertBefore(item, list.firstChild);
+  txCount++;
+  document.getElementById('statTxs').textContent = txCount;
+}
+
+async function connectWallet() {
+  if (!window.ethereum) return showToast('MetaMask não encontrada!', 'error');
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+    const addr = await signer.getAddress();
+    const short = addr.slice(0,6) + '...' + addr.slice(-4);
+    document.getElementById('walletAddress').textContent = short;
+    document.getElementById('connectBtn').textContent = '✅ ' + short;
+    document.getElementById('connectBtn').classList.add('connected');
+    document.getElementById('statusDot').classList.add('online');
+
+    await refreshStats();
+    addLog('🔗', 'Carteira conectada: ' + addr);
+    showToast('Carteira conectada com sucesso!');
+  } catch(e) {
+    showToast('Erro ao conectar: ' + e.message, 'error');
+  }
+}
+
+async function refreshStats() {
+  try {
+    const saldo = await contract.saldoContrato();
+    const total = await contract.totalTecnicos();
+    const saldoEth = ethers.formatEther(saldo);
+    document.getElementById('contractBalance').textContent = parseFloat(saldoEth).toFixed(4) + ' ETH';
+    document.getElementById('statSaldo').textContent = parseFloat(saldoEth).toFixed(4);
+    document.getElementById('statTecnicos').textContent = total.toString();
+  } catch(e) {}
+}
+
+async function depositarFundos() {
+  if (!contract) return showToast('Conecte a carteira primeiro!', 'error');
+  const val = document.getElementById('depositValue').value;
+  if (!val || val <= 0) return showToast('Informe um valor válido!', 'error');
+  try {
+    showToast('Aguardando confirmação na MetaMask...', 'info');
+    const tx = await contract.depositarFundos({ value: ethers.parseEther(val) });
+    addLog('⏳', 'Depositando ' + val + ' ETH... TX: ' + tx.hash.slice(0,16) + '...');
+    await tx.wait();
+    addLog('💰', 'Depósito de ' + val + ' ETH confirmado!');
+    showToast('Depósito realizado com sucesso!');
+    await refreshStats();
+  } catch(e) {
+    showToast('Erro: ' + (e.reason || e.message), 'error');
+    addLog('❌', 'Falha no depósito: ' + (e.reason || e.message));
+  }
+}
+
+async function cadastrarTecnico() {
+  if (!contract) return showToast('Conecte a carteira primeiro!', 'error');
+  const end = document.getElementById('cadEndereco').value.trim();
+  const nome = document.getElementById('cadNome').value.trim();
+  if (!end || !nome) return showToast('Preencha todos os campos!', 'error');
+  try {
+    showToast('Aguardando confirmação na MetaMask...', 'info');
+    const tx = await contract.cadastrarTecnico(end, nome);
+    addLog('⏳', 'Cadastrando técnico ' + nome + '...');
+    await tx.wait();
+    addLog('👤', 'Técnico cadastrado: ' + nome);
+    showToast('Técnico ' + nome + ' cadastrado!');
+    await refreshStats();
+  } catch(e) {
+    showToast('Erro: ' + (e.reason || e.message), 'error');
+    addLog('❌', 'Falha: ' + (e.reason || e.message));
+  }
+}
+
+async function registrarMetricas() {
+  if (!contract) return showToast('Conecte a carteira primeiro!', 'error');
+  const end = document.getElementById('metEndereco').value.trim();
+  const rep = document.getElementById('metReparos').value;
+  const qual = document.getElementById('metQualidade').value;
+  const tempo = document.getElementById('metTempo').value;
+  if (!end || !rep || !qual || !tempo) return showToast('Preencha todos os campos!', 'error');
+  try {
+    showToast('Aguardando confirmação na MetaMask...', 'info');
+    const tx = await contract.registrarMetricas(end, rep, qual, tempo);
+    addLog('⏳', 'Registrando métricas...');
+    await tx.wait();
+    addLog('📊', `Métricas registradas: ${rep} reparos | ${qual}% qualidade | ${tempo}min`);
+    showToast('Métricas registradas com sucesso!');
+  } catch(e) {
+    showToast('Erro: ' + (e.reason || e.message), 'error');
+    addLog('❌', 'Falha: ' + (e.reason || e.message));
+  }
+}
+
+async function liberarPremio() {
+  if (!contract) return showToast('Conecte a carteira primeiro!', 'error');
+  const end = document.getElementById('premEndereco').value.trim();
+  if (!end) return showToast('Informe o endereço!', 'error');
+  try {
+    showToast('Aguardando confirmação na MetaMask...', 'info');
+    const tx = await contract.liberarPremio(end);
+    addLog('⏳', 'Liberando prêmio para ' + end.slice(0,10) + '...');
+    await tx.wait();
+    addLog('🏆', 'Prêmio liberado para: ' + end.slice(0,10) + '...');
+    showToast('Prêmio liberado com sucesso!');
+    await refreshStats();
+  } catch(e) {
+    showToast('Erro: ' + (e.reason || e.message), 'error');
+    addLog('❌', 'Falha: ' + (e.reason || e.message));
+  }
+}
+
+async function liberarTodos() {
+  if (!contract) return showToast('Conecte a carteira primeiro!', 'error');
+  try {
+    showToast('Aguardando confirmação na MetaMask...', 'info');
+    const tx = await contract.liberarTodosOsPremios();
+    addLog('⏳', 'Liberando todos os prêmios...');
+    await tx.wait();
+    addLog('🚀', 'Todos os prêmios liberados!');
+    showToast('Todos os prêmios liberados!');
+    await refreshStats();
+  } catch(e) {
+    showToast('Erro: ' + (e.reason || e.message), 'error');
+    addLog('❌', 'Falha: ' + (e.reason || e.message));
+  }
+}
+
+async function sacarFundos() {
+  if (!contract) return showToast('Conecte a carteira primeiro!', 'error');
+  try {
+    showToast('Aguardando confirmação na MetaMask...', 'info');
+    const tx = await contract.sacarFundos();
+    addLog('⏳', 'Sacando fundos...');
+    await tx.wait();
+    addLog('↩', 'Fundos sacados para carteira do gestor!');
+    showToast('Fundos sacados com sucesso!');
+    await refreshStats();
+  } catch(e) {
+    showToast('Erro: ' + (e.reason || e.message), 'error');
+    addLog('❌', 'Falha: ' + (e.reason || e.message));
+  }
+}
+
+async function consultarTecnico() {
+  if (!contract) return showToast('Conecte a carteira primeiro!', 'error');
+  const end = document.getElementById('consEndereco').value.trim();
+  if (!end) return showToast('Informe o endereço!', 'error');
+  try {
+    const r = await contract.consultarTecnico(end);
+    const niveis = ['Nenhum', 'Bronze', 'Prata', 'Ouro'];
+    const medalClass = ['medal-nenhum', 'medal-bronze', 'medal-prata', 'medal-ouro'];
+    const medalEmoji = ['—', '🥉', '🥈', '🥇'];
+    const n = Number(r.nivel);
+
+    document.getElementById('consNome').textContent = r.nome;
+    document.getElementById('consMedal').innerHTML = `<span class="medal ${medalClass[n]}">${medalEmoji[n]} ${niveis[n]}</span>`;
+    document.getElementById('consReparos').textContent = r.reparos.toString();
+    document.getElementById('consQualidade').textContent = r.qualidade.toString();
+    document.getElementById('consTempo').textContent = r.tempo.toString();
+    document.getElementById('consPontuacao').textContent = r.pontuacao.toString() + ' / 100';
+    document.getElementById('consBarFill').style.width = r.pontuacao.toString() + '%';
+    document.getElementById('consPremiado').textContent = r.premiado ? '✅ Já premiado neste período' : '⏳ Aguardando premiação';
+    document.getElementById('consultaResult').style.display = 'block';
+    addLog('🔍', 'Consulta: ' + r.nome + ' | Pontuação: ' + r.pontuacao + ' | Nível: ' + niveis[n]);
+  } catch(e) {
+    showToast('Erro: ' + (e.reason || e.message), 'error');
+    addLog('❌', 'Falha na consulta: ' + (e.reason || e.message));
+  }
+}
+</script>
+</body>
+</html>

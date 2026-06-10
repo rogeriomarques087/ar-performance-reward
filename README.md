@@ -13,6 +13,7 @@ O sistema elimina a necessidade de aprovações manuais e intermediários na dis
 Interface Web: https://rogeriomarques087.github.io/ar-performance-reward/ar-performance-reward-v3.html
 Contrato na Sepolia: https://sepolia.etherscan.io/address/0x51D550f4c66098244Bd3B98EF5276095eAb2836c
 Endereço do Contrato: `0x51D550f4c66098244Bd3B98EF5276095eAb2836c`
+Video funcional link: https://youtu.be/v9NTAzKb_X4
 ---
 🎯 Contexto e Objetivos
 O Problema
